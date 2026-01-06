@@ -11,7 +11,11 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // Required for Docker
     port: 3000,
+    watch: {
+      usePolling: true, // Required for Docker volume mounts on some systems
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

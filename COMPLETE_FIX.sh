@@ -31,7 +31,9 @@ fi
 
 echo ""
 echo "Step 1: Fixing file permissions on host..."
-cd /home/user/movie-summary
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 chmod -R 755 frontend/src 2>/dev/null || true
 find frontend/src -type f -name "*.ts" -exec chmod 644 {} \; 2>/dev/null || true
 find frontend/src -type f -name "*.tsx" -exec chmod 644 {} \; 2>/dev/null || true

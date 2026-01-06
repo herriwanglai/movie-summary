@@ -1,0 +1,39 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+// More robust path resolution for Docker
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      // Use absolute path starting from /app (Docker workdir)
+      '@': '/app/src',
+      // Fallback to relative path resolution
+      '@/*': path.join(__dirname, 'src', '*'),
+    },
+  },
+  server: {
+    host: '0.0.0.0', // Required for Docker
+    port: 3000,
+    watch: {
+      usePolling: true, // Required for Docker volume mounts
+      interval: 1000,   // Poll every second
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+  },
+})

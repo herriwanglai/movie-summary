@@ -8,6 +8,7 @@ Create a robust FastAPI backend that handles chunked video uploads, stores metad
 
 ## Tech Stack
 - **Framework:** FastAPI (Python 3.11+)
+- **Upload:** tuspyserver (TUS resumable upload protocol)
 - **ORM:** SQLAlchemy 2.0
 - **Migrations:** Alembic
 - **Database:** SQLite (dev) or PostgreSQL (prod)
@@ -26,13 +27,13 @@ Create a robust FastAPI backend that handles chunked video uploads, stores metad
 - Study error handling and exception handlers
 - Learn background tasks for long-running operations
 
-### **Priority 2: Chunked File Upload Implementation**
-- Study chunked upload algorithms
-- Learn file reassembly strategies
-- Understand upload session management
-- Study resume/pause upload patterns
-- Learn file integrity validation (checksums)
-- Study cleanup strategies for failed uploads
+### **Priority 2: TUS Protocol & tuspyserver**
+- Learn TUS (resumable upload) protocol basics
+- Study tuspyserver library API and configuration
+- Understand upload completion hooks
+- Learn TUS-specific CORS headers configuration
+- Study metadata storage with TUS
+- Learn cleanup and expiration settings
 
 ### **Priority 3: SQLAlchemy 2.0 Patterns**
 - Learn SQLAlchemy 2.0 syntax (new style)
@@ -103,6 +104,7 @@ backend/
 **`backend/requirements.txt`:**
 ```
 fastapi==0.110.0
+tuspyserver>=0.1.0  # TUS resumable upload protocol
 uvicorn[standard]==0.27.0
 sqlalchemy==2.0.25
 alembic==1.13.1
@@ -125,11 +127,10 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./meteora_lx.db"
 
-    # Upload settings
-    UPLOAD_DIR: str = "uploads"
+    # Upload settings (TUS)
     VIDEO_DIR: str = "videos"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024 * 1024  # 10GB
-    CHUNK_SIZE: int = 5 * 1024 * 1024  # 5MB
+    UPLOAD_RETENTION_DAYS: int = 5  # Auto-cleanup old uploads
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
@@ -262,174 +263,134 @@ alembic upgrade head
 
 ---
 
-### **Task 3: Chunked Upload System** (3-4 hours)
+### **Task 3: TUS Resumable Upload Integration** (30 minutes) ⚡
 
-**File:** `backend/app/routers/upload.py`
+**Using tuspyserver library - drastically simplifies upload implementation!**
+
+**File:** `backend/app/services/upload_handler.py`
 
 ```python
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
-import os
-import uuid
-import aiofiles
-from app.database import get_db
+from app.database import SessionLocal
 from app.models.video import Video
-from app.schemas.upload import InitUploadResponse, ChunkUploadResponse, CompleteUploadResponse
 from app.config import settings
+import logging
+import os
 
-router = APIRouter(prefix="/upload", tags=["upload"])
+logger = logging.getLogger(__name__)
 
-# In-memory upload session storage (use Redis in production)
-upload_sessions = {}
+def handle_upload_complete(file_path: str, metadata: dict):
+    """
+    Triggered when TUS upload completes
 
-@router.post("/init", response_model=InitUploadResponse)
-async def init_upload(
-    filename: str = Form(...),
-    file_size: int = Form(...),
-    mime_type: str = Form(...)
-):
-    """Initialize a chunked upload session"""
+    Args:
+        file_path: Full path to uploaded video file
+        metadata: Dict containing filename, filetype, etc.
+    """
+    logger.info(f"Upload complete: {file_path}")
+    logger.info(f"Metadata: {metadata}")
 
-    # Validate file size
-    if file_size > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=400, detail="File too large")
-
-    # Validate mime type
-    allowed_types = ["video/mp4", "video/quicktime", "video/x-matroska", "video/webm"]
-    if mime_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type")
-
-    # Generate upload ID
-    upload_id = str(uuid.uuid4())
-
-    # Calculate number of chunks
-    chunk_count = (file_size + settings.CHUNK_SIZE - 1) // settings.CHUNK_SIZE
-
-    # Create upload directory
-    upload_dir = os.path.join(settings.UPLOAD_DIR, upload_id)
-    os.makedirs(upload_dir, exist_ok=True)
-
-    # Store session
-    upload_sessions[upload_id] = {
-        "filename": filename,
-        "file_size": file_size,
-        "mime_type": mime_type,
-        "chunk_count": chunk_count,
-        "chunks_uploaded": set(),
-        "upload_dir": upload_dir
-    }
-
-    return InitUploadResponse(
-        upload_id=upload_id,
-        chunk_size=settings.CHUNK_SIZE,
-        chunk_count=chunk_count
-    )
-
-@router.post("/chunk", response_model=ChunkUploadResponse)
-async def upload_chunk(
-    upload_id: str = Form(...),
-    chunk_index: int = Form(...),
-    chunk: UploadFile = File(...)
-):
-    """Upload a single chunk"""
-
-    # Validate upload session
-    if upload_id not in upload_sessions:
-        raise HTTPException(status_code=404, detail="Upload session not found")
-
-    session = upload_sessions[upload_id]
-
-    # Validate chunk index
-    if chunk_index >= session["chunk_count"]:
-        raise HTTPException(status_code=400, detail="Invalid chunk index")
-
-    # Save chunk to disk
-    chunk_path = os.path.join(session["upload_dir"], f"chunk_{chunk_index}")
-
-    async with aiofiles.open(chunk_path, 'wb') as f:
-        content = await chunk.read()
-        await f.write(content)
-
-    # Mark chunk as uploaded
-    session["chunks_uploaded"].add(chunk_index)
-
-    # Calculate progress
-    progress = len(session["chunks_uploaded"]) / session["chunk_count"] * 100
-
-    return ChunkUploadResponse(
-        chunk_index=chunk_index,
-        progress=progress,
-        chunks_uploaded=len(session["chunks_uploaded"]),
-        total_chunks=session["chunk_count"]
-    )
-
-@router.post("/complete", response_model=CompleteUploadResponse)
-async def complete_upload(
-    upload_id: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    """Complete upload by reassembling chunks"""
-
-    # Validate upload session
-    if upload_id not in upload_sessions:
-        raise HTTPException(status_code=404, detail="Upload session not found")
-
-    session = upload_sessions[upload_id]
-
-    # Validate all chunks uploaded
-    if len(session["chunks_uploaded"]) != session["chunk_count"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing chunks: {session['chunk_count'] - len(session['chunks_uploaded'])}"
-        )
-
-    # Reassemble file
-    final_filename = f"{uuid.uuid4()}_{session['filename']}"
-    final_path = os.path.join(settings.VIDEO_DIR, final_filename)
-
-    async with aiofiles.open(final_path, 'wb') as outfile:
-        for i in range(session["chunk_count"]):
-            chunk_path = os.path.join(session["upload_dir"], f"chunk_{i}")
-            async with aiofiles.open(chunk_path, 'rb') as infile:
-                chunk_data = await infile.read()
-                await outfile.write(chunk_data)
+    # Get filename and file info
+    filename = metadata.get('filename', os.path.basename(file_path))
+    file_size = os.path.getsize(file_path)
+    mime_type = metadata.get('filetype', 'video/mp4')
 
     # Create database record
-    video = Video(
-        filename=session["filename"],
-        file_path=final_path,
-        file_size=session["file_size"],
-        mime_type=session["mime_type"],
-        status="uploaded"
-    )
-    db.add(video)
-    db.commit()
-    db.refresh(video)
+    db = SessionLocal()
+    try:
+        video = Video(
+            filename=filename,
+            file_path=file_path,
+            file_size=file_size,
+            mime_type=mime_type,
+            status="uploaded"
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
 
-    # Cleanup chunks
-    import shutil
-    shutil.rmtree(session["upload_dir"])
+        logger.info(f"Created video record with ID: {video.id}")
 
-    # Remove session
-    del upload_sessions[upload_id]
+        # TODO: Trigger video processing (Agent 3)
+        # from app.services.video_processor import process_video_task
+        # process_video_task.delay(video.id)
 
-    # TODO: Trigger video processing (Agent 3)
-    # from app.services.processing import process_video
-    # process_video.delay(video.id)  # Celery task or background task
+        return video.id
 
-    return CompleteUploadResponse(
-        video_id=video.id,
-        status="uploaded",
-        message="Upload completed successfully"
-    )
+    except Exception as e:
+        logger.error(f"Failed to create video record: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
 ```
 
+**File:** `backend/app/main.py`
+
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from tuspyserver import create_tus_router
+from app.config import settings
+from app.routers import videos, health
+from app.database import engine, Base
+from app.services.upload_handler import handle_upload_complete
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+
+# CORS with TUS-specific headers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=[
+        "Location",           # TUS: Upload URL
+        "Upload-Offset",      # TUS: Current upload progress
+        "Tus-Resumable",      # TUS: Protocol version
+        "Tus-Version",        # TUS: Supported versions
+        "Tus-Extension",      # TUS: Supported extensions
+        "Tus-Max-Size",       # TUS: Max upload size
+        "Upload-Expires",     # TUS: Upload expiration
+        "Upload-Length"       # TUS: Total upload size
+    ],
+)
+
+# Mount TUS upload router
+app.include_router(
+    create_tus_router(
+        files_dir=settings.VIDEO_DIR,
+        on_upload_complete=handle_upload_complete,
+        max_size=settings.MAX_UPLOAD_SIZE,
+        # retention_days=settings.UPLOAD_RETENTION_DAYS  # Auto-cleanup
+    ),
+    prefix=f"{settings.API_PREFIX}/upload"
+)
+
+# Mount other routers
+app.include_router(health.router, prefix=settings.API_PREFIX)
+app.include_router(videos.router, prefix=settings.API_PREFIX)
+```
+
+**That's it!** 🎉 tuspyserver handles:
+- ✅ Chunked upload protocol
+- ✅ Resume/pause functionality
+- ✅ Session management
+- ✅ File reassembly
+- ✅ Progress tracking
+- ✅ Automatic cleanup
+- ✅ Metadata storage
+
 **Success Criteria:**
-- Init endpoint returns upload_id
-- Chunks upload successfully
-- File reassembles correctly
+- TUS router mounted at `/api/upload`
+- Upload completion hook creates video record
+- File stored in VIDEO_DIR
 - Database record created
-- Chunk cleanup works
+- Ready for frontend TUS client integration
 
 ---
 
@@ -536,14 +497,14 @@ process_video_task.delay(video.id)  # Background task
 - [ ] Health check returns 200
 - [ ] OpenAPI docs accessible at /docs
 - [ ] CORS allows frontend origin
-- [ ] Init upload returns upload_id
-- [ ] Can upload chunks sequentially
-- [ ] File reassembles correctly (verify checksum)
+- [ ] TUS router mounted at /api/upload
+- [ ] Can upload video via TUS protocol
+- [ ] Upload completion hook triggers
 - [ ] Database stores video metadata
 - [ ] List videos endpoint works
 - [ ] Get video by ID works
-- [ ] Chunk cleanup removes temporary files
 - [ ] Large file uploads work (1GB+)
+- [ ] Resume/pause upload works (TUS feature)
 
 ## Documentation Sub-Agent Deliverables
 
@@ -552,10 +513,10 @@ process_video_task.delay(video.id)  # Background task
    - Async endpoint patterns
    - Dependency injection examples
 
-2. **Chunked Upload Guide:**
-   - Algorithm explanation
-   - File reassembly code
-   - Session management pattern
+2. **TUS Protocol Guide:**
+   - TUS protocol overview
+   - tuspyserver API reference
+   - Upload completion hook examples
 
 3. **SQLAlchemy 2.0 Cheat Sheet:**
    - Model definition examples
@@ -572,11 +533,11 @@ process_video_task.delay(video.id)  # Background task
 Agent 2 is complete when:
 1. ✅ FastAPI app runs without errors
 2. ✅ Database schema created
-3. ✅ Upload init endpoint works
-4. ✅ Chunk upload endpoint works
-5. ✅ Upload complete endpoint reassembles file
+3. ✅ TUS upload router mounted and working
+4. ✅ Upload completion hook creates video records
+5. ✅ Resume/pause upload functionality works
 6. ✅ Video metadata stored in database
-7. ✅ CORS configured correctly
+7. ✅ CORS configured correctly (including TUS headers)
 8. ✅ API docs accessible
 9. ✅ Code follows best practices
 10. ✅ Integration ready for Agent 1 and Agent 3
@@ -584,8 +545,10 @@ Agent 2 is complete when:
 ## Estimated Timeline
 - Project setup: **1 hour**
 - Database models: **1-2 hours**
-- Chunked upload: **3-4 hours**
+- TUS upload integration: **30 minutes** ⚡ (was 3-4 hours with custom implementation!)
 - Video CRUD: **1 hour**
 - Testing: **1 hour**
 
-**Total: 7-9 hours**
+**Total: 4.5-5.5 hours** (down from 7-9 hours!)
+
+**Time saved by using tuspyserver: 2.5-3.5 hours!** 🎉

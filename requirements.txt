@@ -1,0 +1,36 @@
+# Core Dependencies
+python-dotenv==1.0.0
+
+# Video Processing
+opencv-python==4.8.1.78
+scenedetect[opencv]==0.6.2
+ffmpeg-python==0.2.0
+
+# Audio & Transcription
+openai-whisper==20231117
+faster-whisper==0.10.0
+
+# Image Processing & Storyboard Generation
+Pillow==10.1.0
+reportlab==4.0.7
+Jinja2==3.1.2
+
+# Ollama Integration
+ollama==0.1.6
+requests==2.31.0
+
+# CLI & Utilities
+click==8.1.7
+tqdm==4.66.1
+pydantic==2.5.2
+
+# Data Processing
+numpy==1.26.2
+pandas==2.1.4
+
+# Optional: Speaker Diarization
+# pyannote.audio==3.1.0
+
+# Development
+pytest==7.4.3
+black==23.12.1

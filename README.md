@@ -1,250 +1,211 @@
-# Movie Summary & Analysis System
+# METEORA LX
 
-An intelligent multi-agent system for comprehensive movie analysis using Ollama deepseek-r1:8b. Automatically processes videos to generate summaries, storyboards, transcripts, and expert scriptwriting analysis.
+**AI-Powered Movie Analysis Platform**
 
-## Features
+A comprehensive video analysis tool that combines scene detection, keyframe extraction, and AI-powered insights for filmmakers, editors, and content creators.
 
-- 🎬 **Video Processing**: Automatic scene detection and keyframe extraction
-- 🎤 **Transcription**: Speech-to-text with timestamps using Whisper
-- 🤖 **AI Analysis**: Deep movie analysis using Ollama deepseek-r1:8b
-- 📊 **Storyboard Generation**: Visual storyboards with scene breakdowns
-- ✍️ **Scriptwriting Analysis**: Expert analysis of story structure, characters, and themes
-- 📄 **Multiple Outputs**: JSON, PDF, and HTML reports
+---
 
-## System Architecture
+## 🎬 Features
 
-The system consists of several specialized components:
+### MVP (Phase 1) - ✅ Complete
+- ✅ **Video Upload** - Drag-and-drop interface with TUS resumable uploads
+- ✅ **Video Player** - Full-featured player with screenshot capture
+- ✅ **Scene Detection** - Automatic scene boundary detection
+- ✅ **Keyframe Extraction** - Intelligent frame selection
+- ✅ **Dark Mode UI** - Cinematic dark theme throughout
 
-1. **Video Processor**: Extracts frames, detects scenes, identifies keyframes
-2. **Audio Processor**: Extracts and transcribes audio with timestamps
-3. **Ollama Service**: Interfaces with deepseek-r1:8b for intelligent analysis
-4. **Storyboard Generator**: Creates visual storyboards from keyframes
-5. **Scriptwriting Agent**: Provides expert scriptwriting analysis
-6. **Orchestrator**: Coordinates all components in a unified pipeline
+### Coming Soon
+- 🔄 **Magnetic Timeline** - Final Cut Pro-style timeline navigation
+- 🔄 **AI Captions** - Generate captions, dialog, quotes with Ollama
+- 🔄 **Character Analysis** - Pose and expression detection
+- 🔄 **Ink Export** - Export to Ink visual novel format
+- 🔄 **Collection Manager** - Organize screenshots and clips
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
+---
 
-## Prerequisites
+## 🚀 Quick Start (macOS)
 
-- Python 3.10+
-- FFmpeg (for video/audio processing)
-- Ollama with deepseek-r1:8b model installed
-- GPU recommended for faster processing
-
-## Installation
-
-### 1. Install System Dependencies
-
-**Ubuntu/Debian:**
+### Prerequisites
 ```bash
-sudo apt-get update
-sudo apt-get install ffmpeg
+# Install Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install required tools
+brew install python@3.11 node ffmpeg git
 ```
 
-**macOS:**
-```bash
-brew install ffmpeg
-```
-
-### 2. Install Ollama and deepseek-r1:8b
+### Setup
 
 ```bash
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
+# 1. Clone the repository
+git clone <your-repo-url> movie-summary
+cd movie-summary
 
-# Pull the deepseek-r1:8b model
-ollama pull deepseek-r1:8b
-```
-
-### 3. Install Python Dependencies
-
-```bash
+# 2. Backend setup
+cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+mkdir -p videos
+
+# 3. Frontend setup
+cd ../frontend
+npm install
+
+# 4. Start both servers (from project root)
+cd ..
+./start.sh
 ```
 
-## Quick Start
-
-### Basic Usage
+**Or start manually:**
 
 ```bash
-# Analyze a movie
-python -m src.main analyze movie.mp4
+# Terminal 1 - Backend
+cd backend
+source venv/bin/activate
+uvicorn app.main:app --reload --port 8000
 
-# With custom output directory
-python -m src.main analyze movie.mp4 --output ./results
-
-# Generate only storyboard
-python -m src.main storyboard movie.mp4
-
-# Get transcript only
-python -m src.main transcribe movie.mp4
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
 ```
 
-### Python API
+### Access the Application
 
-```python
-from src.orchestrator.pipeline import MovieAnalysisPipeline
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
 
-# Initialize pipeline
-pipeline = MovieAnalysisPipeline(
-    video_path="movie.mp4",
-    output_dir="./results"
-)
+---
 
-# Run complete analysis
-results = pipeline.run()
+## 📚 Documentation
 
-# Access components
-print(results.summary)
-print(results.transcript)
-results.storyboard.save_pdf("storyboard.pdf")
-```
+- **[Local Setup Guide (macOS)](LOCAL_SETUP_MACOS.md)** - Detailed setup instructions
+- **[MVP Completion Summary](MVP_COMPLETION_SUMMARY.md)** - Technical details and achievements
+- **[Project Timeline](PROJECT_TIMELINE_SUMMARY.md)** - Development phases and estimates
+- **[Testing Strategy](TESTING_STRATEGY_PLAYWRIGHT.md)** - Playwright testing approach
+- **[Agents Implementation](AGENTS_IMPLEMENTATION.md)** - Multi-agent development plan
 
-## Configuration
+---
 
-Create a `.env` file or `config.yaml`:
+## 🏗️ Architecture
 
-```yaml
-# Ollama Configuration
-ollama:
-  host: http://localhost:11434
-  model: deepseek-r1:8b
-  temperature: 0.7
+### Tech Stack
 
-# Video Processing
-video:
-  scene_threshold: 27.0  # Sensitivity for scene detection
-  keyframe_interval: 30  # Extract keyframe every N frames
-  max_resolution: 1920   # Downscale to this width
+**Frontend:**
+- React 19 + TypeScript
+- Vite (build tool)
+- Tailwind CSS v4 (dark mode)
+- shadcn/ui components
+- Zustand (state management)
 
-# Transcription
-audio:
-  model: base            # whisper model: tiny/base/small/medium/large
-  language: en           # or 'auto' for detection
+**Backend:**
+- FastAPI (Python 3.11+)
+- tuspyserver (TUS resumable uploads)
+- SQLAlchemy 2.0 (ORM)
+- SQLite (dev) / PostgreSQL (prod)
 
-# Storyboard
-storyboard:
-  columns: 3
-  include_captions: true
-  format: pdf            # pdf, html, or images
-```
+**Video Processing:**
+- FFmpeg (video manipulation)
+- OpenCV (frame extraction)
+- PySceneDetect (scene detection)
+- NumPy + Pillow (image processing)
 
-## Output Structure
+### Project Structure
 
 ```
-output/
-├── movie_name/
-│   ├── frames/           # Extracted keyframes
-│   ├── scenes/           # Scene metadata
-│   ├── transcript.json   # Full transcript with timestamps
-│   ├── analysis.json     # AI analysis results
-│   ├── storyboard.pdf    # Visual storyboard
-│   ├── report.html       # Interactive HTML report
-│   └── script_analysis.md # Scriptwriting analysis
+movie-summary/
+├── frontend/           # React frontend
+│   ├── src/
+│   │   ├── components/ # UI components
+│   │   ├── stores/     # Zustand stores
+│   │   └── App.tsx     # Main app
+│   └── package.json
+│
+├── backend/            # FastAPI backend
+│   ├── app/
+│   │   ├── main.py     # FastAPI app
+│   │   ├── models/     # Database models
+│   │   ├── routers/    # API endpoints
+│   │   └── services/   # Business logic
+│   └── requirements.txt
+│
+├── src/                # Video processing
+│   └── video_processor/
+│       ├── pipeline.py         # Main pipeline
+│       ├── scene_detector.py   # Scene detection
+│       └── keyframe_selector.py
+│
+└── agents/             # Agent implementation docs
 ```
 
-## Examples
+---
 
-See the `examples/` directory for:
-- Basic movie analysis
-- Custom tool definitions for Ollama
-- Integrating with other agents
-- Batch processing multiple movies
+## 🧪 Testing
 
-## Tools for Ollama Agent
+### Manual Testing
 
-The system provides these tools to the deepseek-r1:8b agent:
+**Test Video Player:**
+1. Open http://localhost:5173
+2. Click "Show Player Demo"
+3. Demo video should play
 
-- `view_frame(frame_id)` - View a specific frame
-- `view_scene(scene_id)` - View keyframes from a scene
-- `get_transcript(start, end)` - Get transcript segment
-- `search_dialogue(query)` - Search for specific dialogue
-- `analyze_character(name)` - Deep character analysis
-- `compare_scenes(scene1, scene2)` - Compare two scenes
+**Test Video Upload:**
+1. Click "Show Uploader"
+2. Drag and drop a video file
+3. Click "Upload Video"
 
-## Advanced Usage
-
-### Custom Scriptwriting Analysis
-
-```python
-from src.scriptwriting_agent.analyzer import ScriptwritingAnalyzer
-
-analyzer = ScriptwritingAnalyzer()
-analysis = analyzer.analyze(
-    transcript=transcript,
-    scenes=scenes,
-    summary=ollama_summary
-)
-
-print(analysis.structure_score)
-print(analysis.character_development)
-print(analysis.recommendations)
-```
-
-### Multi-Agent Coordination
-
-```python
-from src.orchestrator.multi_agent import MultiAgentCoordinator
-
-coordinator = MultiAgentCoordinator()
-coordinator.add_agent("summarizer", ollama_agent)
-coordinator.add_agent("scriptwriter", scriptwriting_agent)
-
-results = coordinator.execute_workflow(video_path)
-```
-
-## Development
-
-### Running Tests
-
+**Test Backend API:**
 ```bash
-pytest tests/
+# Health check
+curl http://localhost:8000/api/health
+
+# List videos
+curl http://localhost:8000/api/videos/
+
+# View API docs
+open http://localhost:8000/docs
 ```
 
-### Code Formatting
+---
 
+## 📊 Development Status
+
+**Phase 1: MVP** ✅ Complete (10-12 hours)
+
+**Phase 2: Timeline & Navigation** (6-8 hours)
+
+**Phase 3: Collection & Node Editor** (5-6 hours)
+
+**Phase 4: AI Features** (6-8 hours)
+
+**Phase 5: Ink Export** (5-6 hours)
+
+See [PROJECT_TIMELINE_SUMMARY.md](PROJECT_TIMELINE_SUMMARY.md) for details.
+
+---
+
+## 🐛 Troubleshooting
+
+See [LOCAL_SETUP_MACOS.md](LOCAL_SETUP_MACOS.md) for detailed troubleshooting.
+
+**Quick fixes:**
 ```bash
-black src/ tests/
+# Kill processes on ports
+lsof -ti:8000 | xargs kill -9  # Backend
+lsof -ti:5173 | xargs kill -9  # Frontend
+
+# Reset database
+cd backend && rm meteora_lx.db
+
+# Reinstall dependencies
+cd backend && pip install -r requirements.txt
+cd frontend && npm install
 ```
 
-## Troubleshooting
+---
 
-### Ollama Connection Issues
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
-
-# Start Ollama service
-ollama serve
-```
-
-### GPU/CUDA Issues
-```bash
-# Check GPU availability
-python -c "import torch; print(torch.cuda.is_available())"
-```
-
-## Contributing
-
-Contributions welcome! Please see CONTRIBUTING.md for guidelines.
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Roadmap
-
-- [ ] Support for streaming services (with proper authorization)
-- [ ] Real-time analysis mode
-- [ ] Multi-language support
-- [ ] Character face recognition
-- [ ] Music and sound analysis
-- [ ] Comparison mode for multiple movies
-- [ ] Export to screenplay format
-
-## Acknowledgments
-
-- Ollama team for the amazing inference engine
-- DeepSeek for the reasoning model
-- OpenAI Whisper for transcription
-- PySceneDetect for scene detection
+**Last Updated:** January 6, 2026  
+**Version:** 0.1.0 (MVP)  
+**Status:** ✅ Ready for local development

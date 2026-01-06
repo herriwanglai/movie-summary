@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: meteora-lx-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: meteora_lx
+      POSTGRES_USER: meteora
+      POSTGRES_PASSWORD: meteora_password_change_in_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - meteora-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meteora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meteora-lx-backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://meteora:meteora_password_change_in_production@db:5432/meteora_lx
+      - VIDEO_DIR=/app/videos
+      - MAX_UPLOAD_SIZE=10737418240
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+    volumes:
+      - ./backend:/app
+      - videos_data:/app/videos
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - meteora-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # React Frontend (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: meteora-lx-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - meteora-network
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+
+  # React Frontend (Production Build)
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: meteora-lx-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - meteora-network
+    profiles:
+      - production
+
+networks:
+  meteora-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  videos_data:
+    driver: local

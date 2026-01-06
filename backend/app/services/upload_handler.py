@@ -39,9 +39,14 @@ def handle_upload_complete(file_path: str, metadata: dict):
 
         logger.info(f"Created video record with ID: {video.id}")
 
-        # TODO: Trigger video processing (Agent 3)
-        # from app.services.video_processor import process_video_task
-        # process_video_task.delay(video.id)
+        # Trigger video processing asynchronously
+        try:
+            from app.services.video_processor import process_video_async
+            process_video_async(video.id)
+            logger.info(f"Triggered video processing for video {video.id}")
+        except Exception as e:
+            logger.error(f"Failed to trigger video processing: {e}")
+            # Don't fail the upload if processing trigger fails
 
         return video.id
 

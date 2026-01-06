@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { Upload, X, Film } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import * as tus from 'tus-js-client'
 
 interface VideoUploaderProps {
   onUploadComplete?: (videoId: string) => void
@@ -81,43 +82,62 @@ export function VideoUploader({ onUploadComplete, onUploadProgress }: VideoUploa
     setProgress(0)
 
     try {
-      // Simulate upload progress (replace with actual TUS upload when backend is ready)
-      const formData = new FormData()
-      formData.append('video', selectedFile)
+      // Create TUS upload
+      const upload = new tus.Upload(selectedFile, {
+        endpoint: 'http://localhost:8000/api/upload/',
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        chunkSize: 5 * 1024 * 1024, // 5MB chunks
+        metadata: {
+          filename: selectedFile.name,
+          filetype: selectedFile.type,
+          filesize: selectedFile.size.toString(),
+        },
+        onError: (error) => {
+          console.error('Upload error:', error)
+          toast({
+            variant: 'destructive',
+            title: 'Upload failed',
+            description: error instanceof Error ? error.message : 'Unknown error',
+          })
+          setUploading(false)
+          setProgress(0)
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100)
+          setProgress(percentage)
+          onUploadProgress?.(percentage)
+        },
+        onSuccess: () => {
+          setProgress(100)
 
-      // Simulate progress
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          const next = prev + 10
-          onUploadProgress?.(next)
-          if (next >= 100) {
-            clearInterval(interval)
-          }
-          return next
-        })
-      }, 500)
+          toast({
+            title: 'Upload successful',
+            description: 'Your video is now being processed',
+          })
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 5000))
+          // Extract video ID from upload URL
+          const videoId = upload.url?.split('/').pop() || 'unknown'
+          onUploadComplete?.(videoId)
 
-      clearInterval(interval)
-      setProgress(100)
-
-      toast({
-        title: 'Upload successful',
-        description: 'Your video is now being processed',
+          // Reset state
+          setTimeout(() => {
+            setSelectedFile(null)
+            setProgress(0)
+            setUploading(false)
+          }, 1000)
+        },
       })
 
-      onUploadComplete?.('demo-video-id')
+      // Check if there are any previous uploads to continue
+      const previousUploads = await upload.findPreviousUploads()
+      if (previousUploads.length > 0) {
+        upload.resumeFromPreviousUpload(previousUploads[0])
+      }
 
-      // Reset state
-      setTimeout(() => {
-        setSelectedFile(null)
-        setProgress(0)
-        setUploading(false)
-      }, 1000)
+      // Start the upload
+      upload.start()
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('Upload initialization error:', error)
       toast({
         variant: 'destructive',
         title: 'Upload failed',

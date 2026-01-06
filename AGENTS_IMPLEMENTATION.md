@@ -140,7 +140,7 @@ Build FastAPI backend with chunked video upload system
 **Estimated Implementation:**
 - FastAPI setup: 1 hour
 - Database models: 1-2 hours
-- Chunked upload system: 3-4 hours
+- TUS upload integration (tuspyserver): 30 min ⚡ (was 3-4 hours!)
 - File validation: 1 hour
 - Testing endpoints: 1 hour
 
@@ -287,10 +287,10 @@ MVP COMPLETE: Video Upload Working
 | Agent | Focus Area | Estimated Time |
 |-------|-----------|----------------|
 | Agent 1 | Frontend UI | 5-7 hours |
-| Agent 2 | Backend API | 7-9 hours |
+| Agent 2 | Backend API | 4.5-5.5 hours ⚡ (tuspyserver) |
 | Agent 3 | Video Processing | 8-10 hours |
 
-**Effective Time with Parallelization:** 8-10 hours (instead of 20-26 sequential)
+**Effective Time with Parallelization:** 8-10 hours (instead of 18-23 sequential)
 
 ### **Integration Phase (Sequential)**
 
@@ -304,6 +304,8 @@ MVP COMPLETE: Video Upload Working
 **Integration Time:** 4-5 hours
 
 ### **Total MVP Time:** 12-15 hours of work
+
+**Time saved by using tuspyserver: 2.5-3.5 hours on Backend!** 🎉
 
 With 3 agents in parallel, this could complete in a single development session or 1-2 days depending on testing thoroughness.
 

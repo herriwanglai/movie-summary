@@ -84,7 +84,7 @@ export function VideoUploader({ onUploadComplete, onUploadProgress }: VideoUploa
     try {
       // Create TUS upload
       const upload = new tus.Upload(selectedFile, {
-        endpoint: 'http://localhost:8000/api/upload/',
+        endpoint: 'http://localhost:8000/api/upload/files/',
         retryDelays: [0, 3000, 5000, 10000, 20000],
         chunkSize: 5 * 1024 * 1024, // 5MB chunks
         metadata: {

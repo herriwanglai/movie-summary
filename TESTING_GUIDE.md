@@ -70,7 +70,7 @@ You should see the METEORA LX welcome screen with three buttons:
 ```
 Frontend (VideoUploader.tsx)
   ↓ [TUS protocol - resumable upload]
-  ↓ [Sends to: http://localhost:8000/api/upload/]
+  ↓ [Sends to: http://localhost:8000/api/upload/files/]
 Backend (FastAPI + TUS)
   ↓ [Saves to: ./videos/ directory]
   ↓ [Creates database record]
@@ -91,7 +91,7 @@ Database (PostgreSQL)
 - Automatic retry on failure (3s, 5s, 10s, 20s delays)
 - Resume interrupted uploads
 
-**Backend Endpoint**: `POST http://localhost:8000/api/upload/`
+**Backend Endpoint**: `POST http://localhost:8000/api/upload/files/`
 
 **Request Metadata**:
 ```json
@@ -207,7 +207,7 @@ curl http://localhost:8000/api/health
 
 ```bash
 # TUS upload endpoint (handled by tuspyserver)
-# Endpoint: http://localhost:8000/api/upload/
+# Endpoint: http://localhost:8000/api/upload/files/
 
 # The frontend handles TUS protocol automatically
 # You can test with curl if needed (see TUS documentation)

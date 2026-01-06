@@ -3,11 +3,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { VideoUploader } from '@/components/upload'
 import { VideoPlayer } from '@/components/player'
-import { Upload, PlayCircle } from 'lucide-react'
+import { VideoWorkspace } from '@/components/workspace/VideoWorkspace'
+import { Upload, PlayCircle, Film } from 'lucide-react'
 
 function App() {
   const [showUploader, setShowUploader] = useState(false)
   const [showPlayer, setShowPlayer] = useState(false)
+  const [showWorkspace, setShowWorkspace] = useState(false)
   const [videoUrl, setVideoUrl] = useState<string>('')
 
   const handleUploadComplete = (videoId: string) => {
@@ -50,12 +52,13 @@ function App() {
             </div>
           </div>
 
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center flex-wrap">
             <Button
               size="lg"
               onClick={() => {
                 setShowUploader(!showUploader)
                 setShowPlayer(false)
+                setShowWorkspace(false)
               }}
             >
               <Upload className="mr-2 h-5 w-5" />
@@ -67,12 +70,26 @@ function App() {
               onClick={() => {
                 setShowPlayer(!showPlayer)
                 setShowUploader(false)
+                setShowWorkspace(false)
                 // Demo video URL - in production this would come from the backend
                 setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
               }}
             >
               <PlayCircle className="mr-2 h-5 w-5" />
               {showPlayer ? 'Hide Player' : 'Show Player Demo'}
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => {
+                setShowWorkspace(!showWorkspace)
+                setShowUploader(false)
+                setShowPlayer(false)
+                setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
+              }}
+            >
+              <Film className="mr-2 h-5 w-5" />
+              {showWorkspace ? 'Hide Timeline' : 'Phase 2: Timeline Demo'}
             </Button>
           </div>
 
@@ -94,6 +111,16 @@ function App() {
           )}
         </div>
       </div>
+
+      {/* Phase 2: Timeline Workspace (Full Screen) */}
+      {showWorkspace && videoUrl && (
+        <div className="fixed inset-0 z-50 bg-gray-950">
+          <VideoWorkspace
+            videoId={1} // Demo video ID
+            videoUrl={videoUrl}
+          />
+        </div>
+      )}
     </div>
   )
 }

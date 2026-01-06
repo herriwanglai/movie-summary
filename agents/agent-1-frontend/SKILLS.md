@@ -13,7 +13,8 @@ Build core React components and UI features for the video upload MVP, focusing o
 - **Styling:** Tailwind CSS v4 with dark mode
 - **State Management:** Zustand
 - **Routing:** React Router (if needed)
-- **Video Player:** Plyr or video.js
+- **Video Player:** Vidstack (modern, TypeScript-first)
+- **Upload Client:** Uppy with TUS plugin
 - **HTTP Client:** fetch API or axios
 
 ## Documentation Sub-Agent Responsibilities
@@ -39,19 +40,21 @@ Build core React components and UI features for the video upload MVP, focusing o
 - Learn custom animation patterns
 - Understand dark mode implementation
 
-### **Priority 4: File Upload UI Patterns**
-- Study drag-and-drop file upload implementations
-- Learn chunked upload progress tracking
-- Understand resumable upload UI patterns
-- Study error handling for file uploads
-- Learn file type validation UI
+### **Priority 4: TUS Upload with Uppy**
+- Learn Uppy file uploader library
+- Study TUS (resumable upload) plugin
+- Understand drag-and-drop with Uppy Dashboard
+- Learn progress tracking with Uppy
+- Study error handling and retry mechanisms
+- Learn Uppy React hooks and components
 
-### **Priority 5: Video Player Integration**
-- Research Plyr vs video.js comparison
-- Learn video.js API and event system
-- Study custom controls implementation
-- Understand video loading states
-- Learn fullscreen API usage
+### **Priority 5: Vidstack Player Integration**
+- Learn Vidstack React library (@vidstack/react)
+- Study MediaPlayer and MediaProvider components
+- Understand Vidstack screenshot/thumbnail API
+- Learn custom controls and layouts
+- Study keyboard shortcuts integration
+- Learn dark mode theming with Vidstack
 
 ## Key Implementation Tasks
 
@@ -74,96 +77,185 @@ npx shadcn@latest add toast
 
 ---
 
-### **Task 2: Upload UI Component** (1-2 hours)
+### **Task 2: TUS Upload with Uppy** (30 minutes) ⚡
+
+**Using Uppy + TUS plugin - production-ready upload solution!**
+
+**Installation:**
+```bash
+npm install @uppy/core @uppy/react @uppy/tus @uppy/dashboard @uppy/drag-drop
+```
 
 **File:** `src/components/upload/VideoUploader.tsx`
 
-**Features:**
-- Drag-and-drop zone with visual feedback
-- File picker button (fallback)
-- File type validation (mp4, mkv, avi, mov, webm)
-- File size display
-- Upload progress bar (chunked)
-- Pause/resume buttons
-- Cancel upload button
-- Error messages with retry
-
-**Required Sub-Components:**
-- `DropZone.tsx` - Drag-and-drop area
-- `UploadProgress.tsx` - Progress indicator
-- `FileInfo.tsx` - File metadata display
-
-**Zustand Store:** `src/stores/uploadStore.ts`
 ```typescript
-interface UploadState {
-  file: File | null
-  progress: number
-  status: 'idle' | 'uploading' | 'paused' | 'completed' | 'error'
-  uploadId: string | null
-  chunksUploaded: number[]
-  error: string | null
+import Uppy from '@uppy/core'
+import Tus from '@uppy/tus'
+import { Dashboard } from '@uppy/react'
+import { useEffect, useState } from 'react'
 
-  setFile: (file: File) => void
-  startUpload: () => Promise<void>
-  pauseUpload: () => void
-  resumeUpload: () => void
-  cancelUpload: () => void
+import '@uppy/core/dist/style.min.css'
+import '@uppy/dashboard/dist/style.min.css'
+
+function VideoUploader() {
+  const [uppy] = useState(() =>
+    new Uppy({
+      restrictions: {
+        maxFileSize: 10 * 1024 * 1024 * 1024, // 10GB
+        allowedFileTypes: ['video/*'],
+      },
+      autoProceed: false,
+    })
+      .use(Tus, {
+        endpoint: 'http://localhost:8000/api/upload/',
+        chunkSize: 5 * 1024 * 1024, // 5MB chunks
+        retryDelays: [0, 1000, 3000, 5000],
+      })
+  )
+
+  useEffect(() => {
+    uppy.on('complete', (result) => {
+      console.log('Upload complete!', result.successful)
+      // Navigate to video page or trigger processing
+    })
+
+    uppy.on('error', (error) => {
+      console.error('Upload error:', error)
+    })
+
+    return () => uppy.close()
+  }, [uppy])
+
+  return (
+    <div className="w-full max-w-4xl mx-auto">
+      <Dashboard
+        uppy={uppy}
+        proudlyDisplayPoweredByUppy={false}
+        theme="dark"
+        width="100%"
+        height={450}
+      />
+    </div>
+  )
 }
 ```
 
-**API Integration:**
-```typescript
-// src/api/upload.ts
-async function initUpload(file: File): Promise<{ uploadId: string }>
-async function uploadChunk(uploadId: string, chunk: Blob, index: number): Promise<void>
-async function completeUpload(uploadId: string): Promise<{ videoId: string }>
-```
+**That's it!** 🎉 Uppy + TUS handles:
+- ✅ Drag-and-drop UI
+- ✅ File picker
+- ✅ Progress tracking
+- ✅ Pause/resume (TUS)
+- ✅ Retry logic
+- ✅ Error handling
+- ✅ Multiple file queuing
+- ✅ Dark theme
 
 **Success Criteria:**
-- Can select video file via drag-drop or picker
-- Shows file name, size, duration (if extractable)
-- Upload progress updates in real-time
-- Can pause and resume upload
-- Error handling with clear messages
+- Uppy Dashboard renders in dark mode
+- Can drag-drop or select video files
+- Progress bar shows upload status
+- Pause/resume works automatically (TUS)
+- Upload completes successfully
 
 ---
 
-### **Task 3: Video Player Component** (2-3 hours)
+### **Task 3: Vidstack Video Player** (30-45 minutes) ⚡
+
+**Using Vidstack - modern, TypeScript-first video player!**
+
+**Installation:**
+```bash
+npm install @vidstack/react
+```
 
 **File:** `src/components/player/VideoPlayer.tsx`
 
-**Features:**
-- Video playback with custom controls
-- Play/pause button
-- Timeline scrubber
-- Volume control
-- Fullscreen toggle
-- Playback speed control (0.5x, 1x, 1.5x, 2x)
-- Current time / duration display
-- Loading state skeleton
-
-**Optional Features:**
-- Thumbnail preview on hover
-- Keyboard shortcuts (Space for play/pause)
-- Double-click for fullscreen
-
-**Props Interface:**
 ```typescript
+import { MediaPlayer, MediaProvider } from '@vidstack/react'
+import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
+import { useRef } from 'react'
+
+import '@vidstack/react/player/styles/default/theme.css'
+import '@vidstack/react/player/styles/default/layouts/video.css'
+
 interface VideoPlayerProps {
-  videoId?: string
-  src?: string
-  onTimeUpdate?: (currentTime: number) => void
-  onReady?: () => void
-  className?: string
+  src: string
+  title?: string
+  onTimeUpdate?: (time: number) => void
+  onScreenshot?: (dataUrl: string) => void
 }
+
+function VideoPlayer({ src, title, onTimeUpdate, onScreenshot }: VideoPlayerProps) {
+  const playerRef = useRef<MediaPlayer>(null)
+
+  const handleScreenshot = async () => {
+    if (playerRef.current) {
+      const canvas = document.createElement('canvas')
+      const video = playerRef.current.el?.querySelector('video')
+
+      if (video) {
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(video, 0, 0)
+        const dataUrl = canvas.toDataURL('image/png')
+        onScreenshot?.(dataUrl)
+      }
+    }
+  }
+
+  return (
+    <MediaPlayer
+      ref={playerRef}
+      src={src}
+      title={title}
+      className="w-full aspect-video"
+      onTimeUpdate={(e) => onTimeUpdate?.(e.detail.currentTime)}
+    >
+      <MediaProvider />
+      <DefaultVideoLayout
+        icons={defaultLayoutIcons}
+        thumbnails="https://media-files.vidstack.io/sprite-fight/thumbnails.vtt"
+      />
+    </MediaPlayer>
+  )
+}
+```
+
+**Built-in Features (No Extra Code!):**
+- ✅ Play/pause controls
+- ✅ Timeline scrubber with preview
+- ✅ Volume control
+- ✅ Fullscreen toggle
+- ✅ Playback speed (0.25x - 2x)
+- ✅ Picture-in-Picture
+- ✅ Keyboard shortcuts (Space, Arrow keys, F, M, etc.)
+- ✅ Loading states
+- ✅ Dark mode theme
+- ✅ Responsive design
+- ✅ Accessibility (ARIA)
+- ✅ TypeScript types
+
+**Screenshot Functionality:**
+Add a screenshot button to the player:
+```typescript
+import { useMediaState } from '@vidstack/react'
+
+// In component:
+const isPaused = useMediaState('paused', playerRef)
+
+<button onClick={handleScreenshot} disabled={!isPaused}>
+  Take Screenshot
+</button>
 ```
 
 **Success Criteria:**
 - Video plays uploaded files
-- Controls are responsive and intuitive
-- Fullscreen works correctly
-- Loading states prevent UI jank
-- Dark theme styling matches METEORA LX
+- All controls work out of the box
+- Dark theme matches METEORA LX
+- Keyboard shortcuts functional
+- Screenshot feature works
+- TypeScript types are correct
 
 ---
 
@@ -302,15 +394,18 @@ Before starting implementation, the sub-agent should provide:
    - Dark mode utilities
    - Custom animation setup
 
-4. **File Upload Best Practices:**
-   - Chunked upload implementation
-   - Progress tracking
-   - Error handling patterns
+4. **Uppy + TUS Upload Guide:**
+   - Uppy Dashboard setup
+   - TUS plugin configuration
+   - Event handling (complete, error, progress)
+   - Dark theme customization
 
-5. **Video Player Integration Guide:**
-   - Recommended library (Plyr or video.js)
-   - Basic setup code
-   - Custom controls example
+5. **Vidstack Player Guide:**
+   - MediaPlayer component setup
+   - Layout customization
+   - Screenshot/thumbnail API
+   - Event listeners and hooks
+   - TypeScript types reference
 
 ## Success Criteria
 
@@ -328,13 +423,15 @@ Agent 1 is complete when:
 
 ## Estimated Timeline
 - shadcn/ui setup: **30 min**
-- Upload UI: **1-2 hours**
-- Video player: **2-3 hours**
+- Upload UI (Uppy + TUS): **30 min** ⚡ (was 1-2 hours!)
+- Video player (Vidstack): **30-45 min** ⚡ (was 2-3 hours!)
 - State management: **1 hour**
-- Error handling: **1 hour**
+- Error handling: **30 min** (less needed with libraries)
 - Testing & refinement: **1 hour**
 
-**Total: 6.5-8.5 hours**
+**Total: 4-4.5 hours** (down from 6.5-8.5 hours!)
+
+**Time saved by using Uppy + Vidstack: 2.5-4 hours!** 🎉
 
 ## Notes for Agent
 - Prioritize MVP functionality over polish

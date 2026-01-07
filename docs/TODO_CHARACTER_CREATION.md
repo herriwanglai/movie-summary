@@ -120,41 +120,75 @@ Post-AI-analysis feature to create detailed character profiles with screenshots,
 
 ---
 
-## Phase 5: Frontend Dialog UI
+## Phase 5: Frontend Fullscreen Workspace UI
 
-### 5.1 Component Structure
+> **See detailed UI spec**: `docs/UI_CHARACTER_CREATION.md`
+
+### 5.1 Main Layout Components
 - [ ] Create `frontend/src/components/character/` directory
-- [ ] `CharacterCreationDialog.tsx` - Main dialog container
-- [ ] `ScreenshotGallery.tsx` - Screenshot display with categories
-- [ ] `ActorReferencePanel.tsx` - Actor info and photos
-- [ ] `CharacterProfileEditor.tsx` - Editable profile form
-- [ ] `JsonPromptPreview.tsx` - JSON viewer/editor
-- [ ] `GenerationProgressOverlay.tsx` - Generation status
+- [ ] `CharacterWorkspace.tsx` - Fullscreen container (`h-screen flex`)
+- [ ] `CharacterSidebar.tsx` - Left sidebar (240px fixed width)
+- [ ] `CharacterListItem.tsx` - Avatar + name + role badge
+- [ ] `NodeGrid.tsx` - Responsive grid for character nodes
 
-### 5.2 State Management
+### 5.2 Character Node Components
+- [ ] `nodes/BaseNode.tsx` - Shared node wrapper with expand/collapse
+- [ ] `nodes/FaceNode.tsx` - Face screenshots gallery
+- [ ] `nodes/BodyNode.tsx` - Full body screenshots
+- [ ] `nodes/ExpressionNode.tsx` - Expression variations
+- [ ] `nodes/PoseNode.tsx` - Pose screenshots
+- [ ] `nodes/OutfitNode.tsx` - Outfit gallery
+- [ ] `nodes/ActorNode.tsx` - Actor metadata + reference photos
+- [ ] `nodes/PromptNode.tsx` - JSON prompt preview/editor
+
+### 5.3 Chatbox Components
+- [ ] `CharacterChatbox.tsx` - Main chat container (resizable)
+- [ ] `ChatMessage.tsx` - Message bubble with action buttons
+- [ ] `QuickActionBar.tsx` - Quick action buttons (Describe face, Find actor, etc.)
+- [ ] AI integration with Ollama for character refinement
+
+### 5.4 Action Components
+- [ ] `GenerateButton.tsx` - Prominent CTA with validation
+- [ ] `GenerationProgress.tsx` - Modal with progress tracking
+- [ ] `ImageCaptureModal.tsx` - Video scrubber for manual capture
+
+### 5.5 State Management
 - [ ] Create `frontend/src/stores/characterStore.ts`
-  - [ ] Character list state
-  - [ ] Current character state
-  - [ ] Screenshots state
-  - [ ] Generation status state
-  - [ ] Actions: fetchCharacter, updateCharacter, triggerCapture, etc.
+  - [ ] `characters[]` - All characters list
+  - [ ] `selectedCharacterId` - Currently selected
+  - [ ] `currentCharacter` - Full character data
+  - [ ] `screenshots` - Categorized screenshots object
+  - [ ] `actorMetadata` - Actor info from web search
+  - [ ] `promptJson` - Generated JSON prompt
+  - [ ] `chatMessages[]` - Chat history
+  - [ ] `generationStatus` - idle/validating/generating/complete/error
+  - [ ] `expandedNodes[]` - Which nodes are expanded
+  - [ ] Actions: selectCharacter, addScreenshot, sendChatMessage, generateImages, etc.
 
-### 5.3 UI Features
-- [ ] Tabbed screenshot gallery (Face/Body/Expression/Pose/Outfit)
-- [ ] Selectable/deletable image thumbnails
-- [ ] Actor metadata display
-- [ ] Editable text areas for descriptions
-- [ ] Collapsible JSON preview
-- [ ] Save draft functionality
-- [ ] Generate images button
+### 5.6 TypeScript Types
+- [ ] Create `frontend/src/types/character.ts`
+  - [ ] `Character` interface
+  - [ ] `Screenshot` interface
+  - [ ] `ActorMetadata` interface
+  - [ ] `CharacterPrompt` interface
+  - [ ] `ChatMessage` interface
+  - [ ] `GeneratedImage` interface
 
-### 5.4 Dialog Flow
-- [ ] Open dialog with character ID
-- [ ] Load existing data or trigger capture
-- [ ] Display loading states
-- [ ] Enable editing
-- [ ] Submit to Nanobanana
-- [ ] Show generation progress
+### 5.7 UI Features
+- [ ] Left sidebar with face avatar thumbnails
+- [ ] 7 node types in responsive grid (2-4 columns)
+- [ ] Expandable/collapsible nodes
+- [ ] AI chatbox with quick actions
+- [ ] Chat message action buttons (Apply to Prompt, Edit, Regenerate)
+- [ ] Generate button with pre-validation checklist
+- [ ] Loading and progress states
+- [ ] Toast notifications for actions
+
+### 5.8 Interaction Flows
+- [ ] Character selection → loads nodes + resets chat
+- [ ] Capture more screenshots → modal with video scrubber
+- [ ] Chat interaction → AI response with apply actions
+- [ ] Generate images → validation → progress → results
 
 ---
 
@@ -244,7 +278,7 @@ react-image-gallery
 | 2 | High | 3-4 | LLAVA integration, frame analysis |
 | 3 | Medium | 2-3 | Web scraping, API parsing |
 | 4 | Medium | 2-3 | JSON schema, prompt generation |
-| 5 | High | 8-10 | React components, state management |
+| 5 | **Very High** | **15-20** | Fullscreen workspace, 7 nodes, chatbox, state |
 | 6 | Medium | 3-4 | External API integration |
 | 7 | Medium | 5-6 | Testing, documentation |
 
